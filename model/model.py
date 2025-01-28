@@ -94,56 +94,56 @@ class SimpleUnet(nn.Module):
       x = up(x, t)
     return self.output(x)
   
-@torch.no_grad()
-def sample(self, noise):
-    """
-    Generate an image by denoising a given noise tensor using the reverse diffusion process.
+  @torch.no_grad()
+  def sample(self, noise):
+      """
+      Generate an image by denoising a given noise tensor using the reverse diffusion process.
 
-    Args:
-        noise (torch.Tensor): Initial noise tensor (e.g., sampled from a Gaussian distribution).
-    
-    Returns:
-        torch.Tensor: Denoised image.
-    """
-    img = noise  # Start with the provided noise tensor
-    T = self.num_timesteps  # Total timesteps for diffusion
-    stepsize = 1  # You can adjust if needed
+      Args:
+          noise (torch.Tensor): Initial noise tensor (e.g., sampled from a Gaussian distribution).
+      
+      Returns:
+          torch.Tensor: Denoised image.
+      """
+      img = noise  # Start with the provided noise tensor
+      T = self.num_timesteps  # Total timesteps for diffusion
+      stepsize = 1  # You can adjust if needed
 
-    # Iterate through the timesteps in reverse order
-    for i in range(0, T)[::-1]:
-        t = torch.full((noise.size(0),), i, device=noise.device, dtype=torch.long)  # Current timestep
-        img = sample_timestep(self, img, t)  # Perform one reverse diffusion step
-        img = torch.clamp(img, -1.0, 1.0)  # Clamp the image to ensure values stay in [-1, 1]
+      # Iterate through the timesteps in reverse order
+      for i in range(0, T)[::-1]:
+          t = torch.full((noise.size(0),), i, device=noise.device, dtype=torch.long)  # Current timestep
+          img = sample_timestep(self, img, t)  # Perform one reverse diffusion step
+          img = torch.clamp(img, -1.0, 1.0)  # Clamp the image to ensure values stay in [-1, 1]
 
-    return img
+      return img
 
-def get_loss(self, x_0, t):
-    x_noisy, noise = forward_diffusion_sample(x_0, t, self.device)
-    noise_pred = self(x_noisy, t)
-    return F.l1_loss(noise, noise_pred)
+  def get_loss(self, x_0, t):
+      x_noisy, noise = forward_diffusion_sample(x_0, t, self.device)
+      noise_pred = self(x_noisy, t)
+      return F.l1_loss(noise, noise_pred)
 
-def train(self, dataloader, BATCH_SIZE=64,T=300, EPOCHS=50, verbose=True):
-    from torch.optim import Adam
+  def train(self, dataloader, BATCH_SIZE=64,T=300, EPOCHS=50, verbose=True):
+      from torch.optim import Adam
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    self.to(device)
-    optimizer = Adam(self.parameters(), lr=0.001)
-    epochs = EPOCHS
+      device = "cuda" if torch.cuda.is_available() else "cpu"
+      self.to(device)
+      optimizer = Adam(self.parameters(), lr=0.001)
+      epochs = EPOCHS
 
-    for epoch in range(epochs):
-        for step, batch in enumerate(dataloader):
-            optimizer.zero_grad()
+      for epoch in range(epochs):
+          for step, batch in enumerate(dataloader):
+              optimizer.zero_grad()
 
-            t = torch.randint(0, T, (BATCH_SIZE,), device=device).long()
-            loss = get_loss(self, batch[0], t)
-            loss.backward()
-            optimizer.step()
+              t = torch.randint(0, T, (BATCH_SIZE,), device=device).long()
+              loss = self.get_loss(self, batch[0], t)
+              loss.backward()
+              optimizer.step()
 
-            if verbose:
-              if epoch % 5 == 0 and step % 150 == 0:
-                  print(f"Epoch {epoch} | step {step:03d} Loss: {loss.item()} ")
-                  sample_plot_image(self)
+              if verbose:
+                if epoch % 5 == 0 and step % 150 == 0:
+                    print(f"Epoch {epoch} | step {step:03d} Loss: {loss.item()} ")
+                    sample_plot_image(self)
 
-def test():
-  ## TODO: add the testing loop here
-  pass
+  def test():
+    ## TODO: add the testing loop here
+    pass
