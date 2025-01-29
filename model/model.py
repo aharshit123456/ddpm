@@ -7,7 +7,7 @@ import math
 import torch
 from utils import forward_diffusion_sample, sample_timestep, sample_plot_image
 import torch.nn.functional as F
-
+from attn_utils import SelfAttention, CBAM, Block_CBAM
 
 class Block(nn.Module):
   def __init__(self, in_ch, out_ch, time_emb_dim, up=False):
@@ -147,3 +147,174 @@ class SimpleUnet(nn.Module):
   def test():
     ## TODO: add the testing loop here
     pass
+
+
+
+
+################################################################################################
+####################### ATTENTION LAYERS ADDEDD TO THE MODEL ###################################
+################################################################################################
+
+class SimpleUnetWSelfAttn(nn.Module):
+  def __init__(self):
+    super().__init__()
+    image_channels = 3
+    down_channels = (64, 128, 256, 512, 1024)
+    up_channels = (1024, 512, 256, 128, 64)
+
+    out_dim = 3
+    time_emb_dim = 32
+
+    ## timestep stored as positional encoding in terms of sine
+    self.time_mlp = nn.Sequential(
+        PositionEmbeddings(time_emb_dim),
+        nn.Linear(time_emb_dim, time_emb_dim),
+        nn.ReLU()
+    )
+    self.num_timesteps = 300
+
+
+    self.conv0 = nn.Conv2d(image_channels, down_channels[0], 3, padding=1)
+    self.down_blocks = nn.ModuleList([
+        Block(down_channels[i], down_channels[i+1], time_emb_dim)
+        for i in range(len(down_channels)-1)
+    ])
+    self.up_blocks = nn.ModuleList([
+        Block(up_channels[i], up_channels[i+1], time_emb_dim, up=True)
+        for i in range(len(up_channels)-1)
+    ])
+
+    self.self_attention = SelfAttention(down_channels[-1])
+
+
+    ## readout layer
+    self.output = nn.Conv2d(up_channels[-1], out_dim, 1)
+
+
+  # def settimestep()
+
+  def forward(self, x, timestep):
+    self.num_timesteps = timestep
+    t = self.time_mlp(timestep)
+    x = self.conv0(x)
+    residual_inputs = []
+    for down in self.down_blocks:
+      x = down(x, t)
+      residual_inputs.append(x)
+
+    x = self.self_attention(x)
+    
+    for up in self.up_blocks:
+      residual_x = residual_inputs.pop()
+      x = torch.cat((x, residual_x), dim=1)
+      x = up(x, t)
+    return self.output(x)
+
+  @torch.no_grad()
+  def sample(self, noise):
+      """
+      Generate an image by denoising a given noise tensor using the reverse diffusion process.
+
+      Args:
+          noise (torch.Tensor): Initial noise tensor (e.g., sampled from a Gaussian distribution).
+      
+      Returns:
+          torch.Tensor: Denoised image.
+      """
+      img = noise  # Start with the provided noise tensor
+      T = self.num_timesteps  # Total timesteps for diffusion
+      stepsize = 1  # You can adjust if needed
+      print(noise.device)
+
+      # Iterate through the timesteps in reverse order
+      for i in range(T - 1, -1, -1):
+          t = torch.full((noise.size(0),), i, device=noise.device, dtype=torch.long)  # Current timestep
+          img = sample_timestep(self, img, t)  # Perform one reverse diffusion step
+          img = torch.clamp(img, -1.0, 1.0)  # Clamp the image to ensure values stay in [-1, 1]
+
+      return img
+  
+
+
+################################################################################################
+#################### Convolutional Block Attention Module ADDED TO THE MODEL ###################
+################################################################################################
+
+class SimpleUnetWCBAM(nn.Module):
+  def __init__(self):
+    super().__init__()
+    image_channels = 3
+    down_channels = (64, 128, 256, 512, 1024)
+    up_channels = (1024, 512, 256, 128, 64)
+
+    out_dim = 3
+    time_emb_dim = 32
+
+    ## timestep stored as positional encoding in terms of sine
+    self.time_mlp = nn.Sequential(
+        PositionEmbeddings(time_emb_dim),
+        nn.Linear(time_emb_dim, time_emb_dim),
+        nn.ReLU()
+    )
+    self.num_timesteps = 300
+
+
+    self.conv0 = nn.Conv2d(image_channels, down_channels[0], 3, padding=1)
+    self.down_blocks = nn.ModuleList([
+        Block_CBAM(down_channels[i], down_channels[i+1], time_emb_dim)
+        for i in range(len(down_channels)-1)
+    ])
+    self.up_blocks = nn.ModuleList([
+        Block_CBAM(up_channels[i], up_channels[i+1], time_emb_dim, up=True)
+        for i in range(len(up_channels)-1)
+    ])
+
+    self.self_attention = SelfAttention(down_channels[-1])
+
+
+    ## readout layer
+    self.output = nn.Conv2d(up_channels[-1], out_dim, 1)
+
+
+  # def settimestep()
+
+  def forward(self, x, timestep):
+    self.num_timesteps = timestep
+    t = self.time_mlp(timestep)
+    x = self.conv0(x)
+    residual_inputs = []
+    for down in self.down_blocks:
+      x = down(x, t)
+      residual_inputs.append(x)
+
+    x = self.self_attention(x)
+    
+    for up in self.up_blocks:
+      residual_x = residual_inputs.pop()
+      x = torch.cat((x, residual_x), dim=1)
+      x = up(x, t)
+    return self.output(x)
+
+  @torch.no_grad()
+  def sample(self, noise):
+      """
+      Generate an image by denoising a given noise tensor using the reverse diffusion process.
+
+      Args:
+          noise (torch.Tensor): Initial noise tensor (e.g., sampled from a Gaussian distribution).
+      
+      Returns:
+          torch.Tensor: Denoised image.
+      """
+      img = noise  # Start with the provided noise tensor
+      T = self.num_timesteps  # Total timesteps for diffusion
+      stepsize = 1  # You can adjust if needed
+      print(noise.device)
+
+      # Iterate through the timesteps in reverse order
+      for i in range(T - 1, -1, -1):
+          t = torch.full((noise.size(0),), i, device=noise.device, dtype=torch.long)  # Current timestep
+          img = sample_timestep(self, img, t)  # Perform one reverse diffusion step
+          img = torch.clamp(img, -1.0, 1.0)  # Clamp the image to ensure values stay in [-1, 1]
+
+      return img
