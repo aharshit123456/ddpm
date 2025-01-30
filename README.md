@@ -30,6 +30,8 @@ python generate.py
 ## Game
 To understand the model and it's workings, we're working on a cool cute little game where the user is the UNET reverser/diffusion model and is tasked to denoise the images with noise made of grids of lines.
 
+Use [learndiffusion.vercel.app](learndiffusion.vercel.app) to access the primitive version of the game. You can also contribute to the game by checking out at the diffusion_game branch. A new model showcase will also be added such that the model's weights are loaded from the internet, model's files are installed and loaded into a gradio interface for direct use/inference on the vercel. Feel free to make changes for the same, issue is opened.
+
 ## Explanations and Mathematics
 - slides from presentation : 
 - notes/explanations : [HERE](slides\notes)
