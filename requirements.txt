@@ -1,6 +1,0 @@
-torch
-math
-torchvision
-matplotlib
-numpy
-scikit-learn
