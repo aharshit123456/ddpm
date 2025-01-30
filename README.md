@@ -11,6 +11,7 @@ Welcome to the Noise Game! This is an interactive game built with JavaScript and
 - [Contributing](#contributing)
 - [License](#license)
 
+
 ## Introduction
 
 Noise Game is a fun and engaging game that challenges players to navigate through various levels filled with obstacles and noise. The game is designed to be both entertaining and educational, providing a unique experience for players of all ages.
