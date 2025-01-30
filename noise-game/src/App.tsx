@@ -6,7 +6,7 @@ import "react-toastify/dist/ReactToastify.css";
 function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [selectedOption, setSelectedOption] = useState<string[]>([]);
-  const [imageSrc, setImageSrc] = useState<string>("");
+  const [, setImageSrc] = useState<string>("");
   const [correctPatterns, setCorrectPatterns] = useState<string[]>([]);
 
   const generateNewImage = () => {
